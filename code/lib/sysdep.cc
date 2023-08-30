@@ -32,6 +32,9 @@
 #include "sys/file.h"
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <cerrno>
+#include <errno.h>
+
 
 #ifdef LINUX	 // at this point, linux doesn't support mprotect 
 #define NO_MPROT     
@@ -346,6 +349,20 @@ Close(int fd)
 {
     int retVal = close(fd);
     ASSERT(retVal >= 0); 
+}
+
+extern "C" {
+
+int my_write(int fileDescriptor, const void *buffer, int size) {
+    return write(fileDescriptor, buffer, size);
+}
+int my_read(int fileDescriptor, void *buffer, int size) {
+    return read(fileDescriptor, buffer, size);
+}
+int close(int fileDescriptor) {
+    return close(fileDescriptor);
+}
+
 }
 
 //----------------------------------------------------------------------

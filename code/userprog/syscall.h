@@ -31,6 +31,7 @@
 #define SC_ThreadYield	10
 #define SC_PrintInt	11
 
+
 #ifndef IN_ASM
 
 /* The system call interface.  These are the operations the Nachos
@@ -93,10 +94,60 @@ void Create(char *name);
 /* Open the Nachos file "name", and return an "OpenFileId" that can 
  * be used to read and write to the file.
  */
-OpenFileId Open(char *name);
+// Open a file with the name and return its corresponding OpenFileId.
+// Return -1 if fail to open the file.
+
+OpenFileId Open(char *name) {
+    Directory *directory = new Directory(NumDirEntries);
+    OpenFileId fileId = -1;
+
+    directory->FetchFrom(directoryFile);
+
+    int sector = directory->Find(name);
+
+    if (sector >= 0) {
+        bool fileOpened = false;
+        
+        // Check if the file is already opened
+        for (int i = 0; i < MAX_OPEN_FILES; i++) {
+            if (fileDescriptorTable[i].openFile != nullptr &&
+                fileDescriptorTable[i].openFile->GetSector() == sector) {
+                fileId = i;
+                fileOpened = true;
+                break;
+            }
+        }
+
+        if (!fileOpened) {
+            // Find an available file descriptor entry
+            for (int i = 0; i < MAX_OPEN_FILES; i++) {
+                if (fileDescriptorTable[i].openFile == nullptr) {
+                    OpenFile *openFile = new OpenFile(sector);
+                    fileDescriptorTable[i].openFile = openFile;
+                    fileId = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    delete directory;
+    return fileId;
+}
+
 
 /* Write "size" bytes from "buffer" to the open file. */
-void Write(char *buffer, int size, OpenFileId id);
+int Write(char *buffer, int size, OpenFileId id) {
+    if (id < 0 || id >= MAX_OPEN_FILES || fileDescriptorTable[id].openFile == nullptr) {
+        // Invalid file descriptor
+        return -1;
+    }
+
+    int bytesWritten = my_write(fileDescriptorTable[id].openFile->getFilePointer(), buffer, size);
+    return bytesWritten;
+}
+
+
 
 /* Read "size" bytes from the open file into "buffer".  
  * Return the number of bytes actually read -- if the open file isn't
@@ -104,11 +155,30 @@ void Write(char *buffer, int size, OpenFileId id);
  * characters to read, return whatever is available (for I/O devices, 
  * you should always wait until you can return at least one character).
  */
-int Read(char *buffer, int size, OpenFileId id);
+int Read(char *buffer, int size, OpenFileId id) {
+    if (id < 0 || id >= MAX_OPEN_FILES || fileDescriptorTable[id].openFile == nullptr) {
+        // Invalid file descriptor
+        return -1;
+    }
+
+    int bytesRead = my_read(fileDescriptorTable[id].openFile->getFilePointer(), buffer, size);
+    return bytesRead;
+}
+
+
 
 /* Close the file, we're done reading and writing to it. */
-void Close(OpenFileId id);
+int Close(OpenFileId id) {
+    if (id < 0 || id >= MAX_OPEN_FILES || fileDescriptorTable[id].openFile == nullptr) {
+        // Invalid file descriptor
+        return -1;
+    }
 
+    close(fileDescriptorTable[id].openFile->getFilePointer());
+    delete fileDescriptorTable[id].openFile;
+    fileDescriptorTable[id].openFile = nullptr;
+    return 1; // Successfully closed the file
+}
 
 
 /* User-level thread operations: Fork and Yield.  To allow multiple

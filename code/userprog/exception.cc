@@ -65,6 +65,11 @@ ExceptionHandler(ExceptionType which)
 			val=kernel->machine->ReadRegister(4);
 			cout << "Print integer:" <<val << endl;
 			return;
+		case SC_Open:
+			char *filename = machine->ReadRegister(4); // 從寄存器讀取文件名
+			int fileId = fileSystem->OpenFile(filename); // 調用打開文件的函數
+			machine->WriteRegister(2, fileId); // 將文件Id返回給用戶程序
+			break;
 /*		case SC_Exec:
 			DEBUG(dbgAddr, "Exec\n");
 			val = kernel->machine->ReadRegister(4);

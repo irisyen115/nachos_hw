@@ -148,3 +148,31 @@ FileHeader::Print()
     }
     delete [] data;
 }
+
+int FileSystem::OpenFile(char *name) {
+    // 檢查是否已達到已打開文件的限制
+    if (numOpenFiles >= MAX_OPEN_FILES) {
+        return -1; // 返回一個錯誤代碼，表示已達到限制
+    }
+
+    // 檢查文件是否存在
+    if (!FileExists(name)) {
+        return -1; // 返回一個錯誤代碼，表示文件不存在
+    }
+
+    // 在fileDescriptorTable中查找一個可用的項目
+    int fileId = FindFreeFileDescriptor();
+
+    if (fileId == -1) {
+        return -1; // 返回一個錯誤代碼，表示沒有空閒的文件描述符項目
+    }
+
+    // 打開文件，並將OpenFile對象存儲在fileDescriptorTable中
+    OpenFile *file = fileSystem->Open(name);
+    fileDescriptorTable[fileId].openFile = file;
+
+    // 增加已打開文件的計數
+    numOpenFiles++;
+
+    return fileId; // 返回文件Id
+}
